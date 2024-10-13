@@ -1,5 +1,7 @@
 // AsciiMap.js
 
+const fs = require('fs');
+
 class AsciiMap {
     /**
      * Creates an instance of AsciiMap.
@@ -116,7 +118,10 @@ class AsciiMap {
         this.map[mapEndY][mapEndX] = charToMove;
     }
 
-    // add method to place a character at a random position
+    /**
+     * Places a character at a random position.
+     * @param {string} char - The ASCII character to place.
+     */
     placeRandom(char) {
         const x = Math.floor(Math.random() * this.drawableWidth);
         const y = Math.floor(Math.random() * this.drawableHeight);
@@ -136,7 +141,6 @@ class AsciiMap {
      * @param {string} filePath - The path to the file where the map will be written.
      */
     writeToFile(filePath) {
-        const fs = require('fs');
         fs.writeFileSync(filePath, this.toString(), 'utf8');
     }
 
@@ -168,6 +172,67 @@ class AsciiMap {
         placements.forEach(({ x, y, char }) => {
             this.place(x, y, char);
         });
+    }
+
+    /**
+     * Reads an ASCII map from a file and returns an AsciiMap instance.
+     * @param {string} filePath - The path to the ASCII map file.
+     * @returns {AsciiMap} A new AsciiMap instance representing the map from the file.
+     */
+    static readFromFile(filePath) {
+        try {
+            const data = fs.readFileSync(filePath, 'utf8');
+            const lines = data.trim().split(/\r?\n/);
+            const height = lines.length;
+
+            if (height < 3) {
+                throw new Error("Map must have at least 3 lines (including borders).");
+            }
+
+            const width = lines[0].length;
+
+            if (width < 3) {
+                throw new Error("Map must have at least 3 characters per line (including borders).");
+            }
+
+            // Ensure all lines have the same length
+            for (let i = 0; i < height; i++) {
+                if (lines[i].length !== width) {
+                    throw new Error(`Line ${i + 1} length (${lines[i].length}) does not match expected width (${width}).`);
+                }
+            }
+
+            // Verify top and bottom borders consist only of '-'
+            const borderLine = '-'.repeat(width);
+            if (lines[0] !== borderLine || lines[height - 1] !== borderLine) {
+                throw new Error("Top and bottom borders must consist only of '-' characters.");
+            }
+
+            // Verify side borders consist only of '|'
+            for (let i = 1; i < height - 1; i++) {
+                if (lines[i][0] !== '|' || lines[i][width - 1] !== '|') {
+                    throw new Error(`Line ${i + 1} side borders must consist only of '|' characters.`);
+                }
+            }
+
+            // Initialize AsciiMap with drawable dimensions
+            const drawableWidth = width - 2;
+            const drawableHeight = height - 2;
+            const mapInstance = new AsciiMap(drawableWidth, drawableHeight);
+
+            // Populate the internal map with characters from the file
+            for (let y = 0; y < drawableHeight; y++) {
+                const line = lines[y + 1];
+                for (let x = 0; x < drawableWidth; x++) {
+                    const char = line[x + 1];
+                    mapInstance.map[y + 1][x + 1] = char;
+                }
+            }
+
+            return mapInstance;
+        } catch (err) {
+            throw new Error(`Failed to read from file: ${err.message}`);
+        }
     }
 }
 
